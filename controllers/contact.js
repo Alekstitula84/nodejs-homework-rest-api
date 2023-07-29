@@ -3,8 +3,21 @@ const { RequestError, ctrlWrapper } = require("../helpers");
 const { Contact } = require("../models/contact");
 
 const getAll = async (req, res, next) => {
-    const result = await Contact.find();
-    res.json(result);
+    const { _id: owner } = req.user;
+
+    const { page = 1, limit = 20, favorite } = req.query;
+    const skip = (page - 1) * limit;
+    const result = await (
+        await Contact.find({ owner }, { skip, limit })
+    ).populate("owner", "name email");
+    if (favorite) {
+        const filteredResult = result.filter((item) => {
+            return item.favorite === Boolean(favorite);
+        });
+        res.json(filteredResult);
+    } else {
+        res.json(result);
+    }
 };
 
 const getById = async (req, res, next) => {
@@ -17,7 +30,8 @@ const getById = async (req, res, next) => {
 };
 
 const add = async (req, res, next) => {
-    const result = await Contact.create(req.body);
+    const { _id: owner } = req.user;
+    const result = await Contact.create(...req.body, owner);
     res.status(201).json(result);
 };
 
